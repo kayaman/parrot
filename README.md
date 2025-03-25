@@ -1,4 +1,4 @@
-# Simple Microservice
+# Parrot
 
 A simple microservice application distributed via GitHub Container Registry and Helm.
 
