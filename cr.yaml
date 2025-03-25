@@ -1,0 +1,5 @@
+owner: kayaman
+git-repo: parrot
+package-path: .cr-release-packages/
+index-path: .cr-index/
+charts-repo: https://kayaman.github.io/parrot/
