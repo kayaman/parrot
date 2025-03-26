@@ -54,7 +54,11 @@ jobs:
           charts-repo-url: https://kayaman.github.io/parrot
           EOF
           cat cr.yaml
-
+          
+      - name: Package Helm Chart
+        run: |
+          helm package helm
+          
       # Run chart-releaser with verbose output for debugging
       - name: Debug and Run chart-releaser
         uses: helm/chart-releaser-action@v1.5.0
