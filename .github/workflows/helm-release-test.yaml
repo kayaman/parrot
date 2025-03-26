@@ -1,0 +1,66 @@
+name: Release Helm Chart
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'helm/**'
+      - '.github/workflows/helm-release.yaml'
+    tags: [ 'chart-v*' ]
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: write  # Required for creating releases
+  pages: write     # Required for gh-pages
+  id-token: write  # Required for gh-pages
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Important for chart-releaser to work correctly
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.10.0
+
+      # Look at what charts we have and their versions
+      - name: Debug Charts
+        run: |
+          ls -la helm/
+          cat helm/Chart.yaml
+
+      # Create cr.yaml for chart-releaser if it doesn't exist
+      - name: Create CR Config
+        run: |
+          cat > cr.yaml << EOF
+          owner: kayaman
+          git-base-url: https://api.github.com/
+          chart-dirs:
+            - helm
+          index-path: ./index.yaml
+          release-name-template: "chart-{{ .Version }}"
+          pages-branch: gh-pages
+          pages-index-path: index.yaml
+          charts-repo-url: https://kayaman.github.io/parrot
+          EOF
+          cat cr.yaml
+
+      # Run chart-releaser with verbose output for debugging
+      - name: Debug and Run chart-releaser
+        uses: helm/chart-releaser-action@v1.5.0
+        env:
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          CR_SKIP_EXISTING: true
+        with:
+          charts_dir: helm
+          config: cr.yaml
