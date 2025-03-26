@@ -1,5 +1,5 @@
 apiVersion: v2
-name: Parrot
+name: parrot
 description: A Helm chart for the Parrot Service
 type: application
 version: 0.0.2

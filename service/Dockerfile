@@ -1,8 +1,12 @@
 FROM node:23-alpine
 
+LABEL org.opencontainers.image.source=https://github.com/kayaman/parrot
+LABEL org.opencontainers.image.description="Parrots mimic and repeat human speech and sounds."
+LABEL org.opencontainers.image.licenses=MIT
+
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --omit=dev
+RUN npm install
 RUN npm install -g tsx
 COPY . .
 ENV NODE_ENV=production

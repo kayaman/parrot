@@ -4,17 +4,28 @@ on:
   push:
     branches: [main]
     paths:
-      - 'helm/**'
-    tags: ['chart-v*']
+      - "helm/**"
+      - ".github/workflows/helm-release.yaml"
+    tags: ["chart-v*"]
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write # Required for creating releases
+  packages: write # Required for pushing to GHCR
+  pages: write # Required for gh-pages
+  id-token: write # Required for gh-pages and OIDC token
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Important for chart-releaser to work correctly
 
       - name: Configure Git
         run: |
@@ -22,9 +33,43 @@ jobs:
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
       - name: Install Helm
-        uses: azure/setup-helm@v3
+        uses: azure/setup-helm@v4.3.0
         with:
           version: v3.10.0
+
+      - name: Setup chart-releaser config
+        run: |
+          cat > cr.yaml << EOF
+          owner: kayaman
+          git-base-url: https://api.github.com/
+          chart-dirs:
+            - helm
+          index-path: ./index.yaml
+          release-name-template: "chart-{{ .Version }}"
+          pages-branch: gh-pages
+          pages-index-path: index.yaml
+          charts-repo-url: https://kayaman.github.io/parrot
+          EOF
+
+      - name: Package Helm chart
+        run: |
+          mkdir -p .cr-release-packages
+          helm package helm/parrot -d .cr-release-packages/
+
+      - name: Create or update Helm repo index
+        run: |
+          mkdir -p .cr-index/
+          # Check if index.yaml exists in the root
+          if [ -f "index.yaml" ]; then
+            cp index.yaml .cr-index/
+            helm repo index .cr-release-packages/ --url https://kayaman.github.io/parrot --merge .cr-index/index.yaml
+          else
+            # Create a new index if none exists
+            helm repo index .cr-release-packages/ --url https://kayaman.github.io/parrot
+          fi
+
+          # Copy the generated index to our index directory
+          cp .cr-release-packages/index.yaml .cr-index/
 
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.5.0
@@ -32,4 +77,43 @@ jobs:
           charts_dir: helm
           config: cr.yaml
         env:
-          CR_TOKEN: '${{ secrets.CR_PAT }}'
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          CR_SKIP_EXISTING: true
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+
+      - name: Create GitHub Pages structure
+        run: |
+          mkdir -p .deploy/site
+          # Only copy index.yaml if it exists
+          if [ -f ".cr-index/index.yaml" ]; then
+            cp .cr-index/index.yaml .deploy/site/
+          else
+            # If chart-releaser created an index, use that
+            if [ -f ".cr-release-packages/index.yaml" ]; then
+              cp .cr-release-packages/index.yaml .deploy/site/
+            else
+              # Create an empty index as fallback
+              helm repo index .deploy/site --url https://kayaman.github.io/parrot
+            fi
+          fi
+
+          # Copy packaged charts if they exist
+          if [ "$(ls -A .cr-release-packages/*.tgz 2>/dev/null)" ]; then
+            cp -r .cr-release-packages/*.tgz .deploy/site/
+          fi
+
+          touch .deploy/site/.nojekyll
+          echo "# Parrot Service Helm Repository" > .deploy/site/README.md
+          echo "This is the Helm repository for the Parrot microservice." >> .deploy/site/README.md
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3.0.1
+        with:
+          path: ".deploy/site"
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4.0.5
+
