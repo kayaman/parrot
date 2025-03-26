@@ -9,5 +9,5 @@ entries:
       name: parrot
       urls:
         - https://kayaman.github.io/parrot/parrot-0.1.0.tgz
-      version: 0.1.0
+      version: latest
 generated: '2023-05-15T10:20:30.123456789Z'
