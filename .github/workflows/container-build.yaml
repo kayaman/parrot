@@ -14,11 +14,11 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    # Explicitly set required permissions
+    # Set required permissions explicitly
     permissions:
       contents: read
       packages: write
-      id-token: write # Required for OIDC token authentication
+      id-token: write
 
     steps:
       - name: Checkout repository
@@ -34,13 +34,6 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.CR_PAT }}
-
-      # Make the GITHUB_TOKEN usable for package operations
-      - name: Update GitHub Token permissions
-        if: github.event_name != 'pull_request'
-        run: |
-          echo "Ensuring the token has package write permissions"
-          # This is a no-op step that ensures the GITHUB_TOKEN is recognized with package write permissions
 
       - name: Extract Docker metadata
         id: meta
@@ -58,7 +51,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
-          context: ./service
+          context: .
+          file: ./service/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

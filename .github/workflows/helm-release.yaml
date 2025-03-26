@@ -5,7 +5,15 @@ on:
     branches: [main]
     paths:
       - 'helm/**'
+      - '.github/workflows/helm-release.yaml'
     tags: ['chart-v*']
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write # Required for creating releases
+  packages: write # Required for pushing to GHCR
+  pages: write # Required for gh-pages
+  id-token: write # Required for gh-pages and OIDC token
 
 jobs:
   release:
@@ -14,7 +22,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Important for chart-releaser to work correctly
 
       - name: Configure Git
         run: |
@@ -26,6 +34,35 @@ jobs:
         with:
           version: v3.10.0
 
+      - name: Setup chart-releaser config
+        run: |
+          cat > cr.yaml << EOF
+          owner: kayaman
+          git-base-url: https://api.github.com/
+          chart-dirs:
+            - helm
+          index-path: ./index.yaml
+          release-name-template: "chart-{{ .Version }}"
+          pages-branch: gh-pages
+          pages-index-path: index.yaml
+          charts-repo-url: https://kayaman.github.io/parrot
+          EOF
+
+      - name: Package Helm chart
+        run: |
+          mkdir -p .cr-release-packages
+          helm package helm/parrot -d .cr-release-packages/
+
+      - name: Create or update Helm repo index
+        run: |
+          mkdir -p .cr-index/
+          if [ -f "index.yaml" ]; then
+            cp index.yaml .cr-index/
+          fi
+
+          helm repo index .cr-release-packages/ --url https://kayaman.github.io/parrot --merge .cr-index/index.yaml
+          cp .cr-release-packages/index.yaml .cr-index/
+
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.5.0
         with:
@@ -33,3 +70,25 @@ jobs:
           config: cr.yaml
         env:
           CR_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+          CR_SKIP_EXISTING: true
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+
+      - name: Create GitHub Pages structure
+        run: |
+          mkdir -p .deploy/site
+          cp .cr-index/index.yaml .deploy/site/
+          cp -r .cr-release-packages/*.tgz .deploy/site/
+          touch .deploy/site/.nojekyll
+          echo "# Parrot Service Helm Repository" > .deploy/site/README.md
+          echo "This is the Helm repository for the Parrot microservice." >> .deploy/site/README.md
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: '.deploy/site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
