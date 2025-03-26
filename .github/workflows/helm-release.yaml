@@ -30,7 +30,7 @@ jobs:
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
       - name: Install Helm
-        uses: azure/setup-helm@v4.3.0
+        uses: azure/setup-helm@v3
         with:
           version: v3.10.0
 
@@ -56,11 +56,16 @@ jobs:
       - name: Create or update Helm repo index
         run: |
           mkdir -p .cr-index/
+          # Check if index.yaml exists in the root
           if [ -f "index.yaml" ]; then
             cp index.yaml .cr-index/
+            helm repo index .cr-release-packages/ --url https://kayaman.github.io/parrot --merge .cr-index/index.yaml
+          else
+            # Create a new index if none exists
+            helm repo index .cr-release-packages/ --url https://kayaman.github.io/parrot
           fi
 
-          helm repo index .cr-release-packages/ --url https://kayaman.github.io/parrot --merge .cr-index/index.yaml
+          # Copy the generated index to our index directory
           cp .cr-release-packages/index.yaml .cr-index/
 
       - name: Run chart-releaser
@@ -78,8 +83,24 @@ jobs:
       - name: Create GitHub Pages structure
         run: |
           mkdir -p .deploy/site
-          cp .cr-index/index.yaml .deploy/site/
-          cp -r .cr-release-packages/*.tgz .deploy/site/
+          # Only copy index.yaml if it exists
+          if [ -f ".cr-index/index.yaml" ]; then
+            cp .cr-index/index.yaml .deploy/site/
+          else
+            # If chart-releaser created an index, use that
+            if [ -f ".cr-release-packages/index.yaml" ]; then
+              cp .cr-release-packages/index.yaml .deploy/site/
+            else
+              # Create an empty index as fallback
+              helm repo index .deploy/site --url https://kayaman.github.io/parrot
+            fi
+          fi
+
+          # Copy packaged charts if they exist
+          if [ "$(ls -A .cr-release-packages/*.tgz 2>/dev/null)" ]; then
+            cp -r .cr-release-packages/*.tgz .deploy/site/
+          fi
+
           touch .deploy/site/.nojekyll
           echo "# Parrot Service Helm Repository" > .deploy/site/README.md
           echo "This is the Helm repository for the Parrot microservice." >> .deploy/site/README.md
