@@ -32,4 +32,4 @@ jobs:
           charts_dir: helm
           config: cr.yaml
         env:
-          CR_TOKEN: '${{ secrets.CR_PAT }}'
+          CR_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
