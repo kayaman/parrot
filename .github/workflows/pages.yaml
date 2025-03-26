@@ -62,68 +62,8 @@ jobs:
           # Add .nojekyll file to disable Jekyll processing
           touch .deploy/site/.nojekyll
 
-          # Install markdown to HTML converter
-          npm install -g marked
-
-          # Convert README.md to HTML for index.html
-          cat > .deploy/convert_readme.js << EOF
-          const fs = require('fs');
-          const marked = require('marked');
-
-          // Read README.md content
-          const readme = fs.readFileSync('README.md', 'utf8');
-
-          // Convert markdown to HTML
-          const htmlContent = marked.parse(readme);
-
-          // Create HTML wrapper
-          const html = \`<!DOCTYPE html>
-          <html>
-            <head>
-              <title>Parrot Helm Repository</title>
-              <meta name="viewport" content="width=device-width, initial-scale=1">
-              <style>
-                body { 
-                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-                  max-width: 1000px; 
-                  margin: 0 auto; 
-                  padding: 20px;
-                  line-height: 1.5;
-                  color: #24292e;
-                }
-                h1, h2, h3 { margin-top: 24px; margin-bottom: 16px; font-weight: 600; line-height: 1.25; }
-                h1 { font-size: 2em; padding-bottom: 0.3em; border-bottom: 1px solid #eaecef; }
-                h2 { font-size: 1.5em; padding-bottom: 0.3em; border-bottom: 1px solid #eaecef; }
-                code, pre { font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; }
-                pre { background-color: #f6f8fa; padding: 16px; overflow: auto; border-radius: 3px; }
-                code { padding: 0.2em 0.4em; background-color: rgba(27,31,35,0.05); border-radius: 3px; }
-                pre code { background-color: transparent; padding: 0; }
-                blockquote { padding: 0 1em; color: #6a737d; border-left: 0.25em solid #dfe2e5; margin: 0; }
-                a { color: #0366d6; text-decoration: none; }
-                a:hover { text-decoration: underline; }
-                hr { height: 0.25em; padding: 0; margin: 24px 0; background-color: #e1e4e8; border: 0; }
-                table { border-spacing: 0; border-collapse: collapse; }
-                table th, table td { padding: 6px 13px; border: 1px solid #dfe2e5; }
-                table tr { background-color: #fff; }
-                table tr:nth-child(2n) { background-color: #f6f8fa; }
-              </style>
-            </head>
-            <body>
-              <div class="markdown-body">
-                \${htmlContent}
-                <hr>
-                <p><em>This page is generated from the project README.md. This is also a Helm chart repository.</em></p>
-                <p><code>helm repo add parrot https://kayaman.github.io/parrot</code></p>
-              </div>
-            </body>
-          </html>\`;
-
-          // Write HTML file
-          fs.writeFileSync('.deploy/site/index.html', html);
-          EOF
-
-          # Execute the conversion script
-          node .deploy/convert_readme.js
+          echo "# Parrot Service Helm Repository" > .gh-pages/README.md
+          echo "This is the Helm repository for the Parrot microservice." >> .gh-pages/README.md
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
