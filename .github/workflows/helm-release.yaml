@@ -18,6 +18,9 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -32,7 +35,7 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4.3.0
         with:
-          version: v3.10.0
+          version: v3.13.3
 
       - name: Setup chart-releaser config
         run: |
@@ -48,6 +51,9 @@ jobs:
           charts-repo-url: https://kayaman.github.io/parrot
           EOF
 
+          # Debug: show the config
+          cat cr.yaml
+
       - name: Package Helm chart
         run: |
           mkdir -p .cr-release-packages
@@ -56,39 +62,77 @@ jobs:
       - name: Create or update Helm repo index
         run: |
           mkdir -p .cr-index/
+          # Check if index.yaml exists in the root
           if [ -f "index.yaml" ]; then
             cp index.yaml .cr-index/
+            helm repo index .cr-release-packages/ --url https://kayaman.github.io/parrot --merge .cr-index/index.yaml
+          else
+            # Create a new index if none exists
+            helm repo index .cr-release-packages/ --url https://kayaman.github.io/parrot
           fi
 
-          helm repo index .cr-release-packages/ --url https://kayaman.github.io/parrot --merge .cr-index/index.yaml
+          # Copy the generated index to our index directory
           cp .cr-release-packages/index.yaml .cr-index/
 
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.5.0
-        with:
-          charts_dir: helm
-          config: cr.yaml
-        env:
-          CR_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-          CR_SKIP_EXISTING: true
+      # Skip chart-releaser for now and handle publishing manually
+      - name: Package charts and create index
+        run: |
+          # Create output directory
+          mkdir -p .cr-output
+
+          # Package the chart
+          echo "Packaging chart from helm/parrot directory"
+          helm package helm/parrot -d .cr-output
+
+          # Create or update index
+          echo "Creating index.yaml"
+          helm repo index .cr-output --url https://kayaman.github.io/parrot
+
+          # Debug: Show what we created
+          echo "Contents of .cr-output:"
+          ls -la .cr-output/
+
+          # Copy index and charts to release packages for later steps
+          mkdir -p .cr-release-packages
+          cp -r .cr-output/* .cr-release-packages/
 
       - name: Setup Pages
-        uses: actions/configure-pages@v3
+        uses: actions/configure-pages@v5.0.0
 
       - name: Create GitHub Pages structure
         run: |
           mkdir -p .deploy/site
-          cp .cr-index/index.yaml .deploy/site/
-          cp -r .cr-release-packages/*.tgz .deploy/site/
+
+          # Ensure index.yaml is at the root of GitHub Pages
+          if [ -f ".cr-release-packages/index.yaml" ]; then
+            # Use the one from chart-releaser if it exists
+            cp .cr-release-packages/index.yaml .deploy/site/index.yaml
+          elif [ -f ".cr-index/index.yaml" ]; then
+            # Fall back to our stored index
+            cp .cr-index/index.yaml .deploy/site/index.yaml
+          else
+            # Create a new empty index as last resort
+            helm repo index .deploy/site --url https://kayaman.github.io/parrot
+          fi
+
+          # Copy packaged charts if they exist
+          if [ "$(ls -A .cr-release-packages/*.tgz 2>/dev/null)" ]; then
+            cp -r .cr-release-packages/*.tgz .deploy/site/
+          fi
+
+          # Debug: show the site structure
+          echo "Site structure before deployment:"
+          ls -la .deploy/site/
+
           touch .deploy/site/.nojekyll
           echo "# Parrot Service Helm Repository" > .deploy/site/README.md
           echo "This is the Helm repository for the Parrot microservice." >> .deploy/site/README.md
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3.0.1
         with:
           path: '.deploy/site'
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4.0.5
