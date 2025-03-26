@@ -62,13 +62,13 @@ jobs:
           # Add .nojekyll file to disable Jekyll processing
           touch .deploy/site/.nojekyll
 
-          echo "# Parrot Service Helm Repository" > .gh-pages/README.md
-          echo "This is the Helm repository for the Parrot microservice." >> .gh-pages/README.md
+          echo "# Parrot Service Helm Repository" > .deploy/site/README.md
+          echo "This is the Helm repository for the Parrot microservice." >> .deploy/site/README.md
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.CR_PAT }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: .deploy/site
           keep_files: false
           user_name: 'github-actions[bot]'
