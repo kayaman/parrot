@@ -1,5 +1,14 @@
 owner: kayaman
 git-repo: parrot
 package-path: .cr-release-packages/
-index-path: .cr-index/
+# index-path: .cr-index/
 charts-repo: https://kayaman.github.io/parrot/
+
+git-base-url: https://api.github.com/
+chart-dirs:
+  - helm
+index-path: ./index.yaml
+release-name-template: 'chart-{{ .Version }}'
+pages-branch: gh-pages
+pages-index-path: index.yaml
+charts-repo-url: https://kayaman.github.io/parrot
