@@ -85,7 +85,7 @@ jobs:
           echo "This is the Helm repository for the Parrot microservice." >> .deploy/site/README.md
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v4
         with:
           path: '.deploy/site'
 
