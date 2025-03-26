@@ -6,7 +6,7 @@ LABEL org.opencontainers.image.licenses=MIT
 
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --omit=dev
+RUN npm install
 RUN npm install -g tsx
 COPY . .
 ENV NODE_ENV=production
