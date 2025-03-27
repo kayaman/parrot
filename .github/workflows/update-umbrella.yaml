@@ -1,0 +1,69 @@
+name: Release Chart
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'helm/**'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: latest
+
+      # - name: Package and publish Helm chart
+      #   run: |
+      #     # Package the chart
+      #     helm package helm/parrot -d ./
+
+      #     # Create or update the Helm repository index
+      #     if [ -f "index.yaml" ]; then
+      #       helm repo index ./ --url https://kayaman.github.io/parrot --merge index.yaml
+      #     else
+      #       helm repo index ./ --url https://kayaman.github.io/parrot
+      #     fi
+
+      #     # Create a simple README for the GitHub Pages site if it doesn't exist
+      #     if [ ! -f "README.md" ]; then
+      #       echo "# Parrot Helm Repository" > README.md
+      #       echo "This repository contains Helm charts for the Parrot microservice." >> README.md
+      #     fi
+
+      #     # Commit and push changes
+      #     git add *.tgz index.yaml README.md
+      #     git commit -m "Update Helm chart" || echo "No changes to commit"
+      #     git push
+
+      - name: Checkout umbrella repository
+        uses: actions/checkout@v3
+        with:
+          repository: kayaman/disneyland
+          path: umbrella
+          token: ${{ secrets.UMBRELLA_REPO_PAT }}
+
+      - name: Copy chart to umbrella repository
+        run: |
+          mkdir -p umbrella/charts/parrot
+          cp -r helm/parrot/* umbrella/charts/parrot/
+          cd umbrella
+          git add charts/parrot
+          git commit -m "Update parrot chart to latest version" || echo "No changes to commit"
+          git push || echo "No changes to push"
