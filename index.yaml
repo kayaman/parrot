@@ -1,0 +1,14 @@
+apiVersion: v1
+entries:
+  parrot:
+  - apiVersion: v2
+    appVersion: 1.0.1
+    created: "2025-04-16T21:59:38.333891949Z"
+    description: A Helm chart for the Parrot Service
+    digest: 3bcc6aa27a6530d3b8318009488afe2c14237b81f7bbf4c5070d8b2a5911a841
+    name: parrot
+    type: application
+    urls:
+    - https://github.com/kayaman/parrot/releases/download/parrot-0.1.0/parrot-0.1.0.tgz
+    version: 0.1.0
+generated: "2025-04-16T21:59:38.333901487Z"
